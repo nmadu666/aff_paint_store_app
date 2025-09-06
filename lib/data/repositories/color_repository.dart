@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/color_pricing_model.dart';
+import '../models/color_data_model.dart';
 
 /// Lớp trừu tượng định nghĩa các phương thức cần có để lấy dữ liệu màu sắc.
 abstract class IColorRepository {
@@ -8,8 +9,9 @@ abstract class IColorRepository {
     required String colorMixingProductType,
     required String base,
   });
-  // Thêm các phương thức khác ở đây, ví dụ:
-  // Future<List<ColorData>> getAllColors();
+
+  /// Lấy danh sách các đối tượng ColorData dựa trên danh sách ID.
+  Future<List<ColorData>> getColorsByIds(List<String> colorIds);
 }
 
 /// Triển khai repository sử dụng Firebase Firestore.
@@ -36,5 +38,39 @@ class FirebaseColorRepository implements IColorRepository {
     }
 
     return null;
+  }
+
+  @override
+  Future<List<ColorData>> getColorsByIds(List<String> colorIds) async {
+    if (colorIds.isEmpty) {
+      return [];
+    }
+
+    final List<ColorData> allColors = [];
+    const chunkSize = 30; // Giới hạn của truy vấn 'whereIn' trong Firestore
+
+    for (var i = 0; i < colorIds.length; i += chunkSize) {
+      final chunk = colorIds.sublist(
+        i,
+        i + chunkSize > colorIds.length ? colorIds.length : i + chunkSize,
+      );
+
+      final snapshot = await _firestore
+          .collection('colors')
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get();
+
+      allColors.addAll(
+        snapshot.docs
+            .map(
+              (doc) => ColorData.fromFirestore(
+                doc as DocumentSnapshot<Map<String, dynamic>>,
+              ),
+            )
+            .toList(),
+      );
+    }
+
+    return allColors;
   }
 }

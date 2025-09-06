@@ -1,8 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'package:aff_paint_store_app/features/products/presentation/product_list_page.dart';
+import 'package:aff_paint_store_app/features/colors/presentation/color_collection_list_page.dart';
 
 import 'firebase_options.dart';
 
@@ -29,8 +28,8 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      // Đặt trang danh sách sản phẩm làm trang chủ để demo
-      home: const ProductListPage(),
+      // Đặt trang danh sách bộ sưu tập màu làm trang chủ để demo
+      home: const ColorCollectionListPage(),
     );
   }
 }

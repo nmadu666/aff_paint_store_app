@@ -7,7 +7,11 @@ class ColorData {
   final String name;
   final String ncs;
   final String hexCode;
+  // --- Fields from Apps Script Sync ---
   final String trademarkRef;
+  final List<String> collectionRefs;
+  final String? tone;
+  final int? lightness;
 
   ColorData({
     required this.id,
@@ -16,6 +20,9 @@ class ColorData {
     required this.ncs,
     required this.hexCode,
     required this.trademarkRef,
+    required this.collectionRefs,
+    this.tone,
+    this.lightness,
   });
 
   factory ColorData.fromFirestore(
@@ -32,6 +39,11 @@ class ColorData {
       ncs: data['ncs'] ?? '',
       hexCode: data['hexCode'] ?? '',
       trademarkRef: data['trademark_ref'] ?? '',
+      collectionRefs: data['collection_refs'] != null
+          ? List<String>.from(data['collection_refs'])
+          : [],
+      tone: data['tone'],
+      lightness: data['lightness'],
     );
   }
 
@@ -42,6 +54,9 @@ class ColorData {
       'ncs': ncs,
       'hexCode': hexCode,
       'trademark_ref': trademarkRef,
+      'collection_refs': collectionRefs,
+      'tone': tone,
+      'lightness': lightness,
     };
   }
 }
