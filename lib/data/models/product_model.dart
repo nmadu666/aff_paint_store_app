@@ -97,9 +97,12 @@ class Product {
     }
 
     // Helper to create a DocumentReference from a string path.
-    DocumentReference? _parseRef(dynamic path) {
-      if (path is String && path.isNotEmpty) {
-        return FirebaseFirestore.instance.doc(path);
+    DocumentReference? _parseRef(dynamic ref) {
+      if (ref is DocumentReference) {
+        return ref;
+      }
+      if (ref is String && ref.isNotEmpty) {
+        return FirebaseFirestore.instance.doc(ref);
       }
       return null;
     }

@@ -12,6 +12,12 @@ abstract class IColorRepository {
 
   /// Lấy danh sách các đối tượng ColorData dựa trên danh sách ID.
   Future<List<ColorData>> getColorsByIds(List<String> colorIds);
+
+  /// Lấy danh sách các loại gốc sơn ('A', 'B'...) có sẵn cho một màu và một loại sản phẩm.
+  Future<List<String>> getAvailableBasesForColor({
+    required String colorId,
+    required String colorMixingProductType,
+  });
 }
 
 /// Triển khai repository sử dụng Firebase Firestore.
@@ -72,5 +78,38 @@ class FirebaseColorRepository implements IColorRepository {
     }
 
     return allColors;
+  }
+
+  @override
+  Future<List<String>> getAvailableBasesForColor({
+    required String colorId,
+    required String colorMixingProductType,
+  }) async {
+    print(
+      '🔍 [ColorRepo] Lấy các gốc sơn có sẵn cho colorId=$colorId, productType=$colorMixingProductType',
+    );
+    final snapshot = await _firestore
+        .collection('colors')
+        .doc(colorId)
+        .collection('color_pricings')
+        .where('color_mixing_product_type', isEqualTo: colorMixingProductType)
+        .get();
+
+    if (snapshot.docs.isEmpty) {
+      print(
+        'ℹ️ [ColorRepo] Không tìm thấy thông tin giá nào, trả về danh sách gốc sơn rỗng.',
+      );
+      return [];
+    }
+
+    // Lấy danh sách các gốc sơn và loại bỏ các giá trị trùng lặp.
+    final bases = snapshot.docs
+        .map((doc) => doc.data()['base'] as String?)
+        .whereType<String>() // Lọc bỏ null và chỉ giữ lại String
+        .toSet() // Sử dụng Set để tự động loại bỏ các giá trị trùng lặp
+        .toList();
+
+    print('✅ [ColorRepo] Các gốc sơn tìm thấy: $bases');
+    return bases;
   }
 }

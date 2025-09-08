@@ -18,7 +18,7 @@ final colorCollectionRepositoryProvider = Provider<IColorCollectionRepository>((
 /// Riverpod sẽ cache kết quả dựa trên `trademarkId`. Nếu `trademarkId` là null,
 /// nó sẽ lấy tất cả các bộ sưu tập.
 final colorCollectionsProvider =
-    FutureProvider.family<List<ColorCollection>, String?>((
+    FutureProvider.autoDispose.family<List<ColorCollection>, String?>((
       ref,
       trademarkId,
     ) async {

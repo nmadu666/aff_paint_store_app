@@ -1,13 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:equatable/equatable.dart';
 
-class ColorPricing {
+class ColorPricing extends Equatable {
   final String id;
   final String colorRef;
   final String colorMixingProductType;
   final String base;
   final double pricePerMl;
 
-  ColorPricing({
+  const ColorPricing({
     required this.id,
     required this.colorRef,
     required this.colorMixingProductType,
@@ -39,4 +40,8 @@ class ColorPricing {
       'pricePerMl': pricePerMl,
     };
   }
+
+  @override
+  List<Object?> get props =>
+      [id, colorRef, colorMixingProductType, base, pricePerMl];
 }

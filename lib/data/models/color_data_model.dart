@@ -1,7 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:equatable/equatable.dart';
 
 // Đặt tên là ColorData để tránh trùng với lớp Color của Flutter
-class ColorData {
+class ColorData extends Equatable {
   final String id;
   final String code;
   final String name;
@@ -13,7 +14,7 @@ class ColorData {
   final String? tone;
   final int? lightness;
 
-  ColorData({
+  const ColorData({
     required this.id,
     required this.code,
     required this.name,
@@ -59,4 +60,17 @@ class ColorData {
       'lightness': lightness,
     };
   }
+
+  @override
+  List<Object?> get props => [
+        id,
+        code,
+        name,
+        ncs,
+        hexCode,
+        trademarkRef,
+        collectionRefs,
+        tone,
+        lightness
+      ];
 }

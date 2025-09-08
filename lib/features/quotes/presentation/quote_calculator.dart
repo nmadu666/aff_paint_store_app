@@ -1,7 +1,15 @@
+import 'dart:math';
 import '../../../data/models/color_data_model.dart';
 import '../../../data/models/parent_product_model.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/repositories/color_repository.dart';
+
+/// Một record chứa chi tiết các thành phần giá.
+typedef QuotePriceDetails = ({
+  double basePrice,
+  double colorPrice,
+  double finalPrice,
+});
 
 class QuoteCalculator {
   final IColorRepository _colorRepository;
@@ -13,7 +21,7 @@ class QuoteCalculator {
   /// [sku]: Sản phẩm cụ thể được chọn (ví dụ: Lon 5L - Gốc A).
   /// [parentProduct]: Sản phẩm cha của SKU (ví dụ: Mykolor Semigloss Finish).
   /// [color]: Màu được chọn.
-  Future<double> calculateMixedPaintPrice({
+  Future<QuotePriceDetails> calculateMixedPaintPrice({
     required Product sku,
     required ParentProduct parentProduct,
     required ColorData color,
@@ -60,10 +68,43 @@ class QuoteCalculator {
     // d. Lấy pricePerMl.
     final pricePerMl = colorPricing.pricePerMl;
 
-    // e. Tính giá cuối cùng.
-    // Các giá trị đã được xác thực là không null ở trên.
-    final finalPrice = basePrice + (pricePerMl * unitValue * 1000);
+    // e. Tính giá cuối cùng với logic nghiệp vụ phức tạp.
 
-    return finalPrice;
+    // e.1. Xác định hệ số markup dựa trên điều kiện nghiệp vụ.
+    // Điều kiện: Nếu (dung tích * giá/ml) > 500, dùng hệ số thấp hơn.
+    final double markupFactor;
+    if ((unitValue * pricePerMl) > 500) {
+      markupFactor = 1150;
+    } else {
+      markupFactor = 1200; // Mặc định
+    }
+
+    // e.2. Tính giá màu sau khi đã áp dụng markup.
+    // Công thức: (giá/ml) * (dung tích L) * (hệ số)
+    final calculatedColorPrice = pricePerMl * unitValue * markupFactor;
+
+    // e.3. Xác định giá màu tối thiểu dựa trên dung tích lon sơn.
+    // Điều này đảm bảo lợi nhuận tối thiểu cho các lon sơn nhỏ.
+    double minimumColorPrice = 0;
+    if (unitValue < 3) {
+      minimumColorPrice = 10000;
+    } else if (unitValue < 7) {
+      minimumColorPrice = 20000;
+    } else if (unitValue < 20) {
+      // Áp dụng cho các lon từ 7L đến dưới 20L
+      minimumColorPrice = 30000;
+    }
+
+    // e.4. Giá màu cuối cùng là giá lớn hơn giữa giá tính toán và giá tối thiểu.
+    final finalColorPrice = max(calculatedColorPrice, minimumColorPrice);
+
+    // e.5. Giá thành phẩm = Giá gốc lon sơn + Giá màu cuối cùng.
+    final finalPrice = basePrice + finalColorPrice;
+
+    return (
+      basePrice: basePrice,
+      colorPrice: finalColorPrice,
+      finalPrice: finalPrice,
+    );
   }
 }

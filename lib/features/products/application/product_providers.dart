@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../data/models/color_data_model.dart';
 import '../../../data/models/product_model.dart';
+import '../../../data/models/parent_product_model.dart';
 import '../../../data/repositories/product_repository.dart';
 
 /// Provider cho Repository
@@ -31,4 +33,29 @@ final productsProvider = FutureProvider.family<List<Product>, ProductFilter>((
     categoryId: filter.categoryId,
     trademarkId: filter.trademarkId,
   );
+});
+
+/// Provider để lấy danh sách các ParentProduct tương thích với một màu đã chọn.
+///
+/// Sử dụng `FutureProvider.family` để truyền vào đối tượng `ColorData`.
+/// Riverpod sẽ cache kết quả dựa trên giá trị của đối tượng màu (nhờ Equatable).
+/// `.autoDispose` sẽ tự động hủy trạng thái khi không còn được sử dụng.
+final compatibleParentProductsProvider =
+    FutureProvider.autoDispose.family<List<ParentProduct>, ColorData>((
+  ref,
+  color,
+) async {
+  // Lấy instance của repository từ provider đã định nghĩa ở trên.
+  final productRepository = ref.watch(productRepositoryProvider);
+  return productRepository.getCompatibleParentProducts(color);
+});
+
+/// Provider để lấy tất cả các SKU (sản phẩm con) cho một `ParentProduct` ID.
+///
+/// Sử dụng `.family` để truyền vào `parentProductId`.
+/// Riverpod sẽ cache kết quả dựa trên ID này.
+final skusForParentProvider =
+    FutureProvider.autoDispose.family<List<Product>, String>((ref, parentProductId) async {
+  final repository = ref.watch(productRepositoryProvider);
+  return repository.getSkusForParent(parentProductId);
 });

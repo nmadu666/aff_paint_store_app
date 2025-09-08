@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/color_collection_model.dart';
 import '../../../data/models/color_data_model.dart';
 import '../application/color_providers.dart';
+import '../../products/presentation/sku_selection_page.dart';
+import 'widgets/compatible_parent_product_list.dart';
 
 /// Hàm tiện ích để chuyển đổi chuỗi hex thành đối tượng Color của Flutter.
 Color _hexToColor(String hexCode) {
@@ -45,9 +47,6 @@ class ColorDetailPage extends ConsumerWidget {
               child: Text('Bộ sưu tập này không có màu nào.'),
             );
           }
-          // Sắp xếp các màu theo độ sáng để có giao diện đẹp mắt hơn.
-          colors.sort((a, b) => (b.lightness ?? 0).compareTo(a.lightness ?? 0));
-
           return GridView.builder(
             padding: const EdgeInsets.all(8.0),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -59,7 +58,7 @@ class ColorDetailPage extends ConsumerWidget {
             itemCount: colors.length,
             itemBuilder: (context, index) {
               final color = colors[index];
-              return _ColorTile(color: color);
+              return _ColorTile(color: color, onColorSelected: _showProductSelectionSheet);
             },
           );
         },
@@ -73,13 +72,87 @@ class ColorDetailPage extends ConsumerWidget {
       ),
     );
   }
+
+  // Hàm này có thể được đặt trong trang ColorDetailPage
+  // và được gọi từ sự kiện onTap của _ColorTile.
+  void _showProductSelectionSheet(BuildContext context, ColorData selectedColor) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true, // Cho phép bottom sheet cao hơn
+      builder: (BuildContext context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.5, // Bắt đầu ở 50% chiều cao màn hình
+          maxChildSize: 0.9,      // Tối đa 90%
+          minChildSize: 0.3,      // Tối thiểu 30%
+          builder: (BuildContext context, ScrollController scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(16.0),
+                  topRight: Radius.circular(16.0),
+                ),
+              ),
+              child: Column(
+                children: [
+                  // Tay cầm để kéo
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Container(
+                      width: 40,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
+                    child: Text(
+                      'Chọn dòng sản phẩm',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    // Sử dụng widget mới tạo
+                    child: CompatibleParentProductList(
+                      color: selectedColor,
+                      onParentProductSelected: (parentProduct) {
+                        // Xử lý khi người dùng chọn một sản phẩm
+                        print('Đã chọn: ${parentProduct.name}');
+                        // Đóng bottom sheet trước khi điều hướng.
+                        Navigator.of(context).pop(); 
+                        // Điều hướng đến trang chọn SKU.
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => SkuSelectionPage(
+                                color: selectedColor, parentProduct: parentProduct),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+  
 }
 
 /// Widget riêng để hiển thị một ô màu.
 class _ColorTile extends StatelessWidget {
   final ColorData color;
+  // Thêm callback để gọi hàm từ ColorDetailPage
+  final Function(BuildContext, ColorData) onColorSelected;
 
-  const _ColorTile({required this.color});
+  const _ColorTile({required this.color, required this.onColorSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -89,17 +162,21 @@ class _ColorTile extends StatelessWidget {
         ? Colors.black
         : Colors.white;
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      elevation: 2.0,
-      child: Container(
-        color: colorSwatch,
-        padding: const EdgeInsets.all(8.0),
-        alignment: Alignment.bottomCenter,
-        child: Text(
-          color.code,
-          style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
+    return InkWell(
+      onTap: () => onColorSelected(context, color),
+      borderRadius: BorderRadius.circular(8.0),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        elevation: 2.0,
+        child: Container(
+          color: colorSwatch,
+          padding: const EdgeInsets.all(8.0),
+          alignment: Alignment.bottomCenter,
+          child: Text(
+            color.code,
+            style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
         ),
       ),
     );

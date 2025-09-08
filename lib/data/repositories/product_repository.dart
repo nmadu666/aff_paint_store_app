@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/color_data_model.dart';
+import '../models/parent_product_model.dart';
 import '../models/product_model.dart';
 
 /// Lớp trừu tượng định nghĩa các phương thức cần có để lấy dữ liệu sản phẩm.
@@ -7,6 +9,12 @@ abstract class IProductRepository {
   ///
   /// Nếu không có bộ lọc nào được cung cấp, nó sẽ trả về tất cả sản phẩm.
   Future<List<Product>> getProducts({String? categoryId, String? trademarkId});
+
+  /// Lấy danh sách các ParentProduct phù hợp với một màu cụ thể.
+  Future<List<ParentProduct>> getCompatibleParentProducts(ColorData color);
+
+  /// Lấy danh sách các SKU (Product) thuộc về một ParentProduct.
+  Future<List<Product>> getSkusForParent(String parentProductId);
 }
 
 /// Triển khai repository sử dụng Firebase Firestore.
@@ -56,27 +64,23 @@ class FirebaseProductRepository implements IProductRepository {
       return []; // Không có sản phẩm cha nào khớp, trả về danh sách rỗng.
     }
 
-    // Bước 2: Lấy danh sách các ĐƯỜNG DẪN (String) của sản phẩm cha.
-    // *** SỬA LỖI QUAN TRỌNG: So sánh chuỗi đường dẫn thay vì đối tượng DocumentReference ***
-    final parentRefPaths = parentSnapshot.docs
-        .map((doc) => doc.reference.path)
-        .toList();
+    // Bước 2: Lấy danh sách các DocumentReference của sản phẩm cha.
+    final parentRefs = parentSnapshot.docs.map((doc) => doc.reference).toList();
 
     // Bước 3: Truy vấn collection `products` bằng `whereIn`.
     // Xử lý giới hạn 30 mục của `whereIn` bằng cách chia thành các lô.
     print('📦 [ProductRepo] Bước 2: Chuẩn bị truy vấn sản phẩm con...');
     final List<Product> allProducts = [];
-    const chunkSize = 30;
+    const chunkSize =
+        30; // Firestore 'in' and 'array-contains-any' queries are limited to 30 items.
 
     // Chia danh sách parentRefs thành các lô nhỏ hơn.
-    final List<List<String>> chunks = [];
-    for (var i = 0; i < parentRefPaths.length; i += chunkSize) {
+    final List<List<DocumentReference>> chunks = [];
+    for (var i = 0; i < parentRefs.length; i += chunkSize) {
       chunks.add(
-        parentRefPaths.sublist(
+        parentRefs.sublist(
           i,
-          i + chunkSize > parentRefPaths.length
-              ? parentRefPaths.length
-              : i + chunkSize,
+          i + chunkSize > parentRefs.length ? parentRefs.length : i + chunkSize,
         ),
       );
     }
@@ -102,6 +106,95 @@ class FirebaseProductRepository implements IProductRepository {
       '✅ [ProductRepo] Bước 3: Hoàn tất. Tổng số sản phẩm lấy được: ${allProducts.length}.',
     );
     return allProducts;
+  }
+
+  @override
+  Future<List<ParentProduct>> getCompatibleParentProducts(
+    ColorData color,
+  ) async {
+    // 1. Lấy tất cả các `colorMixingProductType` có sẵn cho màu này
+    //    từ sub-collection 'color_pricings'.
+    print(
+      '🔍 [ProductRepo] Lấy các loại sản phẩm tương thích cho màu: ${color.name} (ID: ${color.id})',
+    );
+    final pricingSnapshot = await _firestore
+        .collection('colors')
+        .doc(color.id)
+        .collection('color_pricings')
+        .get();
+
+    if (pricingSnapshot.docs.isEmpty) {
+      print(
+        'ℹ️ [ProductRepo] Không tìm thấy thông tin giá (pricing) cho màu ${color.id}. Sẽ không có sản phẩm tương thích.',
+      );
+      return [];
+    }
+
+    // Lấy danh sách các product type duy nhất.
+    final availableProductTypes = pricingSnapshot.docs
+        .map((doc) => doc.data()['color_mixing_product_type'] as String?)
+        .where((type) => type != null && type.isNotEmpty)
+        .toSet() // toSet để loại bỏ các giá trị trùng lặp
+        .toList();
+
+    if (availableProductTypes.isEmpty) {
+      print(
+        'ℹ️ [ProductRepo] Không có "color_mixing_product_type" hợp lệ trong thông tin giá của màu ${color.id}.',
+      );
+      return [];
+    }
+    print(
+      '📄 [ProductRepo] Các loại sản phẩm tìm thấy cho màu: $availableProductTypes',
+    );
+
+    // 2. Truy vấn `parent_products`
+    //    - Lọc theo `trademarkRef` của màu.
+    //    - Lọc theo danh sách `colorMixingProductType` tìm được.
+    //    Firestore `whereIn` giới hạn 30 phần tử, nhưng số lượng product types cho một màu
+    //    thường rất nhỏ nên không cần chia nhỏ (chunking) ở đây.
+    print(
+      '📦 [ProductRepo] Truy vấn "parent_products" với trademarkRef=${color.trademarkRef} và productTypes=$availableProductTypes',
+    );
+    final parentProductsQuery = _firestore
+        .collection('parent_products')
+        .where('trademark_ref', isEqualTo: color.trademarkRef)
+        .where('color_mixing_product_type', whereIn: availableProductTypes);
+
+    final parentProductsSnapshot = await parentProductsQuery.get();
+
+    final results = parentProductsSnapshot.docs
+        .map((doc) => ParentProduct.fromFirestore(doc))
+        .toList();
+
+    print(
+      '✅ [ProductRepo] Tìm thấy ${results.length} ParentProduct tương thích.',
+    );
+    return results;
+  }
+
+  @override
+  Future<List<Product>> getSkusForParent(String parentProductId) async {
+    print(
+      '📦 [ProductRepo] Lấy các SKU cho ParentProduct ID: $parentProductId',
+    );
+    // Tạo một DocumentReference đến sản phẩm cha.
+    // Truy vấn bằng DocumentReference là cách chính xác và an toàn nhất.
+    final parentDocRef = _firestore
+        .collection('parent_products')
+        .doc(parentProductId);
+
+    final snapshot = await _firestore
+        .collection('products')
+        .where('parent_product_ref', isEqualTo: parentDocRef)
+        .get();
+
+    final skus = snapshot.docs
+        .map((doc) => Product.fromFirestore(doc))
+        .toList();
+    // Sắp xếp các SKU theo dung tích để hiển thị một cách hợp lý.
+    skus.sort((a, b) => (a.unitValue ?? 0).compareTo(b.unitValue ?? 0));
+    print('✅ [ProductRepo] Tìm thấy ${skus.length} SKU.');
+    return skus;
   }
 }
 

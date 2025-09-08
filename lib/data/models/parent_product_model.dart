@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:equatable/equatable.dart';
 
-class ParentProduct {
+class ParentProduct extends Equatable {
   final String id;
   final String name;
 
@@ -13,7 +14,7 @@ class ParentProduct {
   /// Một chuỗi giống enum đại diện cho loại sản phẩm để tính toán pha màu (ví dụ: "int_1", "ext_1").
   final String colorMixingProductType;
 
-  ParentProduct({
+  const ParentProduct({
     required this.id,
     required this.name,
     required this.category,
@@ -58,4 +59,13 @@ class ParentProduct {
       'color_mixing_product_type': colorMixingProductType,
     };
   }
+
+  @override
+  List<Object?> get props => [
+        id,
+        name,
+        category,
+        trademarkRef,
+        colorMixingProductType,
+      ];
 }

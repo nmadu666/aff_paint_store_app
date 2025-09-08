@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/color_collection_providers.dart';
 import 'color_detail_page.dart';
+import '../../cart/presentation/widgets/cart_icon_widget.dart';
 
 /// Một trang hiển thị danh sách các bộ sưu tập màu từ Firestore.
 class ColorCollectionListPage extends ConsumerWidget {
@@ -19,7 +20,11 @@ class ColorCollectionListPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Bộ sưu tập màu'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ), 
+        actions: const [
+          // Thêm icon giỏ hàng vào AppBar
+          CartIconWidget(),
+        ],
+      ),
       // 2. Sử dụng `when` để xử lý các trạng thái một cách an toàn.
       body: collectionsAsyncValue.when(
         data: (collections) {

@@ -1,7 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:equatable/equatable.dart';
 
 /// Represents a collection of colors, e.g., "Mykolor 2024 Collection".
-class ColorCollection {
+class ColorCollection extends Equatable {
   final String id;
   final String name;
   final String? description;
@@ -12,7 +13,7 @@ class ColorCollection {
   /// List of color document IDs belonging to this collection.
   final List<String> colorRefs;
 
-  ColorCollection({
+  const ColorCollection({
     required this.id,
     required this.name,
     this.description,
@@ -47,4 +48,13 @@ class ColorCollection {
       'color_refs': colorRefs,
     };
   }
+
+  @override
+  List<Object?> get props => [
+        id,
+        name,
+        description,
+        trademarkRef,
+        colorRefs,
+      ];
 }
