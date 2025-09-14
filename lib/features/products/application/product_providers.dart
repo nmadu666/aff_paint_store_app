@@ -15,23 +15,24 @@ final productRepositoryProvider = Provider<IProductRepository>((ref) {
 
 /// Định nghĩa một kiểu dữ liệu cho bộ lọc để code dễ đọc hơn.
 /// Đây là một Dart Record, cho phép nhóm nhiều giá trị lại với nhau.
-typedef ProductFilter = ({String? categoryId, String? trademarkId});
+typedef ProductFilter = ({String? categoryId, String? trademarkId, String? searchTerm});
 
 /// Provider để lấy dữ liệu sản phẩm có lọc
 ///
 /// Chúng ta sử dụng `FutureProvider.family` để có thể truyền tham số (bộ lọc) vào.
 /// Riverpod sẽ tự động cache kết quả dựa trên giá trị của bộ lọc.
-final productsProvider = FutureProvider.family<List<Product>, ProductFilter>((
+final productsProvider = FutureProvider.family<ProductPage, ProductFilter>((
   ref,
   filter,
 ) async {
   // Lấy instance của repository từ provider đã định nghĩa ở trên.
   final productRepository = ref.watch(productRepositoryProvider);
 
-  // Gọi phương thức getProducts với các bộ lọc được truyền vào.
-  return productRepository.getProducts(
+  // Gọi phương thức getProducts với các bộ lọc được truyền vào và trả về ProductPage.
+  return await productRepository.getProducts(
     categoryId: filter.categoryId,
     trademarkId: filter.trademarkId,
+    searchTerm: filter.searchTerm,
   );
 });
 
@@ -58,4 +59,13 @@ final skusForParentProvider =
     FutureProvider.autoDispose.family<List<Product>, String>((ref, parentProductId) async {
   final repository = ref.watch(productRepositoryProvider);
   return repository.getSkusForParent(parentProductId);
+});
+
+/// Provider để lấy một ParentProduct duy nhất bằng ID.
+///
+/// Hữu ích khi chúng ta có một tham chiếu (ref) đến sản phẩm cha từ một SKU
+/// và cần lấy đầy đủ thông tin của nó.
+final parentProductByIdProvider = FutureProvider.autoDispose.family<ParentProduct, String>((ref, id) async {
+  final repository = ref.watch(productRepositoryProvider);
+  return repository.getParentProductById(id);
 });

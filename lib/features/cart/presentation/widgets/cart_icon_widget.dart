@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/cart_provider.dart';
-import '../cart_page.dart';
+import '../../../shell/presentation/app_scaffold.dart';
 
 /// Một widget hiển thị icon giỏ hàng cùng với số lượng sản phẩm hiện có.
 class CartIconWidget extends ConsumerWidget {
@@ -21,9 +21,9 @@ class CartIconWidget extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.shopping_cart_outlined),
             onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const CartPage()),
-              );
+              // Chuyển đến tab Giỏ hàng bằng hằng số để code an toàn hơn.
+              // bằng cách cập nhật state của provider.
+              ref.read(selectedIndexProvider.notifier).state = AppTabs.cart;
             },
           ),
           if (itemCount > 0)

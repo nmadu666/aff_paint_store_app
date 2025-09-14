@@ -3,14 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../data/models/cart_item.dart';
-import '../../quotes/presentation/quote_detail_page.dart';
 import '../application/cart_provider.dart';
 
-class CartPage extends ConsumerWidget {
+class CartPage extends ConsumerStatefulWidget {
   const CartPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CartPage> createState() => _CartPageState();
+}
+
+class _CartPageState extends ConsumerState<CartPage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true; // Yêu cầu giữ lại trạng thái của widget này.
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // Quan trọng: phải gọi super.build khi dùng mixin.
+
     final cartItems = ref.watch(cartProvider);
     final cartTotal = ref.watch(cartTotalProvider);
     final currencyFormatter = NumberFormat.currency(
@@ -18,37 +28,31 @@ class CartPage extends ConsumerWidget {
       symbol: 'đ',
     );
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Giỏ hàng'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: cartItems.isEmpty
-          ? const Center(
-              child: Text(
-                'Giỏ hàng của bạn đang trống.',
-                style: TextStyle(fontSize: 18, color: Colors.grey),
-              ),
-            )
-          : Column(
-              children: [
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(8.0),
-                    itemCount: cartItems.length,
-                    itemBuilder: (context, index) {
-                      final item = cartItems[index];
-                      return _CartItemTile(
-                        item: item,
-                        formatter: currencyFormatter,
-                      );
-                    },
-                  ),
-                ),
-                _buildTotalSection(context, cartTotal, currencyFormatter),
-              ],
+    return cartItems.isEmpty
+        ? const Center(
+            child: Text(
+              'Giỏ hàng của bạn đang trống.',
+              style: TextStyle(fontSize: 18, color: Colors.grey),
             ),
-    );
+          )
+        : Column(
+            children: [
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(8.0),
+                  itemCount: cartItems.length,
+                  itemBuilder: (context, index) {
+                    final item = cartItems[index];
+                    return _CartItemTile(
+                      item: item,
+                      formatter: currencyFormatter,
+                    );
+                  },
+                ),
+              ),
+              _buildTotalSection(context, cartTotal, currencyFormatter),
+            ],
+          );
   }
 
   Widget _buildTotalSection(
@@ -111,6 +115,19 @@ class CartPage extends ConsumerWidget {
   }
 }
 
+// Helper function để chuyển đổi chuỗi hex thành Color.
+// Được sao chép ở đây để tránh import không cần thiết.
+Color hexToColor(String hexCode) {
+  final buffer = StringBuffer();
+  if (hexCode.length == 6 || hexCode.length == 7) buffer.write('ff');
+  buffer.write(hexCode.replaceFirst('#', ''));
+  try {
+    return Color(int.parse(buffer.toString(), radix: 16));
+  } catch (e) {
+    return Colors.grey;
+  }
+}
+
 class _CartItemTile extends ConsumerWidget {
   final CartItem item;
   final NumberFormat formatter;
@@ -128,13 +145,15 @@ class _CartItemTile extends ConsumerWidget {
             backgroundColor: hexToColor(item.color.hexCode),
           ),
           title: Text(
-            item.parentProduct.name,
+            // Nếu có parentProduct, hiển thị tên của nó, nếu không thì hiển thị tên SKU.
+            item.parentProduct?.name ?? item.sku.name,
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(item.sku.name),
+              // Chỉ hiển thị tên SKU ở dòng phụ nếu có parentProduct.
+              if (item.parentProduct != null) Text(item.sku.name),
               Text('Màu: ${item.color.code}'),
               Text(
                 '${formatter.format(item.priceDetails.finalPrice)} x ${item.quantity}',
@@ -142,22 +161,72 @@ class _CartItemTile extends ConsumerWidget {
               ),
             ],
           ),
-          trailing: IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.red),
-            onPressed: () {
-              // Gọi notifier để xóa sản phẩm
-              ref.read(cartProvider.notifier).removeItem(item.id);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Đã xóa "${item.parentProduct.name}" khỏi giỏ hàng.',
-                  ),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-            },
-          ),
+          // Thay thế nút xóa bằng bộ điều khiển số lượng.
+          trailing: _QuantityControl(item: item),
         ),
+      ),
+    );
+  }
+}
+
+/// Widget để tăng/giảm số lượng sản phẩm trong giỏ hàng.
+class _QuantityControl extends ConsumerWidget {
+  final CartItem item;
+
+  const _QuantityControl({required this.item});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Nút giảm số lượng
+          SizedBox(
+            width: 32,
+            height: 32,
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              icon: Icon(
+                // Hiển thị icon thùng rác nếu số lượng là 1
+                item.quantity == 1 ? Icons.delete_outline : Icons.remove,
+                size: 18,
+                color: item.quantity == 1 ? Colors.red : Colors.black,
+              ),
+              onPressed: () {
+                ref
+                    .read(cartProvider.notifier)
+                    .updateQuantity(item.id, item.quantity - 1);
+              },
+            ),
+          ),
+          // Hiển thị số lượng
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: Text(
+              '${item.quantity}',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ),
+          // Nút tăng số lượng
+          SizedBox(
+            width: 32,
+            height: 32,
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              icon: const Icon(Icons.add, size: 18),
+              onPressed: () {
+                ref
+                    .read(cartProvider.notifier)
+                    .updateQuantity(item.id, item.quantity + 1);
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

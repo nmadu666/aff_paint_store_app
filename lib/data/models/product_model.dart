@@ -134,11 +134,77 @@ class Product {
     );
   }
 
+  factory Product.fromJson(Map<String, dynamic> json) {
+    // Helper to safely parse a string into a DateTime object.
+    DateTime? _parseDate(dynamic value) {
+      if (value is String && value.isNotEmpty) return DateTime.tryParse(value);
+      return null;
+    }
+
+    // Helper to create a DocumentReference from a string path.
+    DocumentReference? _parseRef(dynamic ref) {
+      if (ref is String && ref.isNotEmpty) return FirebaseFirestore.instance.doc(ref);
+      return null;
+    }
+
+    return Product(
+      id: json['id'] as String,
+      code: json['code'] as String,
+      name: json['name'] as String,
+      fullName: json['fullName'] as String?,
+      barCode: json['barCode'] as String?,
+      categoryId: json['categoryId'] as String?,
+      categoryName: json['categoryName'] as String?,
+      tradeMarkId: json['tradeMarkId'] as String?,
+      tradeMarkName: json['tradeMarkName'] as String?,
+      unit: json['unit'] as String?,
+      basePrice: (json['basePrice'] as num?)?.toDouble(),
+      description: json['description'] as String?,
+      weight: (json['weight'] as num?)?.toDouble(),
+      hasVariants: json['hasVariants'] as bool,
+      inventoriesJson: json['inventories_json'] as String,
+      images: json['images'] != null ? List<String>.from(json['images']) : null,
+      createdDate: _parseDate(json['createdDate']),
+      modifiedDate: _parseDate(json['modifiedDate']),
+      parentProductRef: _parseRef(json['parent_product_ref']),
+      base: json['base'] as String?,
+      unitValue: (json['unit_value'] as num?)?.toDouble(),
+    );
+  }
+
   Map<String, dynamic> toFirestore() {
     return {
       // KiotViet fields
       'id': id, // The script uses 'id' as the KiotViet ID column
       'kiot_id': id, // And also 'kiot_id'
+      'code': code,
+      'name': name,
+      'fullName': fullName,
+      'barCode': barCode,
+      'categoryId': categoryId,
+      'categoryName': categoryName,
+      'tradeMarkId': tradeMarkId,
+      'tradeMarkName': tradeMarkName,
+      'unit': unit,
+      'basePrice': basePrice,
+      'description': description,
+      'weight': weight,
+      'hasVariants': hasVariants,
+      'inventories_json': inventoriesJson,
+      'images': images,
+      'createdDate': createdDate?.toIso8601String(),
+      'modifiedDate': modifiedDate?.toIso8601String(),
+
+      // Custom fields
+      'parent_product_ref': parentProductRef?.path,
+      'base': base,
+      'unit_value': unitValue,
+    };
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
       'code': code,
       'name': name,
       'fullName': fullName,

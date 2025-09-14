@@ -3,18 +3,35 @@ import '../models/color_data_model.dart';
 import '../models/parent_product_model.dart';
 import '../models/product_model.dart';
 
+/// Lớp chứa kết quả của một trang dữ liệu sản phẩm.
+class ProductPage {
+  final List<Product> products;
+  final DocumentSnapshot? lastDoc; // Document cuối cùng để làm con trỏ cho trang tiếp theo.
+  final bool hasMore; // Cho biết có còn trang để tải hay không.
+
+  const ProductPage({
+    required this.products,
+    this.lastDoc,
+    required this.hasMore,
+  });
+}
+
 /// Lớp trừu tượng định nghĩa các phương thức cần có để lấy dữ liệu sản phẩm.
 abstract class IProductRepository {
   /// Lấy danh sách sản phẩm, có thể lọc theo categoryId và trademarkId.
-  ///
+  /// Có thể tìm kiếm theo `searchTerm` trên tên và mã sản phẩm.
   /// Nếu không có bộ lọc nào được cung cấp, nó sẽ trả về tất cả sản phẩm.
-  Future<List<Product>> getProducts({String? categoryId, String? trademarkId});
+  Future<ProductPage> getProducts(
+      {String? categoryId, String? trademarkId, String? searchTerm, int limit = 20, DocumentSnapshot? lastDoc});
 
   /// Lấy danh sách các ParentProduct phù hợp với một màu cụ thể.
   Future<List<ParentProduct>> getCompatibleParentProducts(ColorData color);
 
   /// Lấy danh sách các SKU (Product) thuộc về một ParentProduct.
   Future<List<Product>> getSkusForParent(String parentProductId);
+
+  /// Lấy một ParentProduct duy nhất bằng ID.
+  Future<ParentProduct> getParentProductById(String id);
 }
 
 /// Triển khai repository sử dụng Firebase Firestore.
@@ -22,90 +39,68 @@ class FirebaseProductRepository implements IProductRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
-  Future<List<Product>> getProducts({
+  Future<ProductPage> getProducts({
     String? categoryId,
     String? trademarkId,
+    String? searchTerm,
+    int limit = 20,
+    DocumentSnapshot? lastDoc,
   }) async {
-    // Log để kiểm tra các bộ lọc đầu vào
     print(
-      '🔍 [ProductRepo] Bắt đầu lấy sản phẩm với bộ lọc: categoryId=$categoryId, trademarkId=$trademarkId',
+      '🔍 [ProductRepo] Lấy trang sản phẩm: categoryId=$categoryId, trademarkId=$trademarkId, searchTerm=$searchTerm, limit=$limit',
     );
 
-    // Nếu không có bộ lọc, lấy tất cả sản phẩm một cách hiệu quả.
-    if (categoryId == null && trademarkId == null) {
-      final snapshot = await _firestore.collection('products').get();
-      final products = snapshot.docs
-          .map((doc) => Product.fromFirestore(doc))
-          .toList();
-      print(
-        '✅ [ProductRepo] Không có bộ lọc. Lấy được ${products.length} sản phẩm.',
-      );
-      return products;
+    // Lưu ý: Tìm kiếm (searchTerm) và phân trang (pagination) thường không đi cùng nhau
+    // trong Firestore nếu không có dịch vụ tìm kiếm bên thứ ba (như Algolia).
+    // Logic dưới đây giả định rằng khi có searchTerm, chúng ta sẽ không phân trang
+    // và tải tất cả kết quả phù hợp (hành vi cũ).
+    if (searchTerm != null && searchTerm.isNotEmpty) {
+      // Đây là phần logic cũ, không phân trang, để xử lý tìm kiếm.
+      // Nó sẽ tải tất cả sản phẩm và lọc phía client.
+      print('⚠️ [ProductRepo] Chế độ tìm kiếm, sẽ tải tất cả và lọc phía client.');
+      final allProducts = await _getAllProductsForFilter(categoryId, trademarkId);
+      final normalizedSearchTerm = searchTerm.toLowerCase().trim();
+      final filteredProducts = allProducts.where((product) {
+        return product.name.toLowerCase().contains(normalizedSearchTerm) ||
+            product.code.toLowerCase().contains(normalizedSearchTerm);
+      }).toList();
+      return ProductPage(products: filteredProducts, hasMore: false);
     }
 
-    // Bước 1: Xây dựng và thực thi truy vấn trên `parent_products`.
-    print('📄 [ProductRepo] Bước 1: Truy vấn collection "parent_products"...');
-    Query parentQuery = _firestore.collection('parent_products');
+    // Logic phân trang mới (khi không có searchTerm)
+    // Giả định collection 'products' đã được phi chuẩn hóa với các trường 'categoryId' và 'trademarkId'.
+    Query query = _firestore.collection('products').orderBy('name');
 
+    // Áp dụng bộ lọc
     if (categoryId != null) {
-      // Giả định categoryId là một string khớp với trường 'category'
-      parentQuery = parentQuery.where('category', isEqualTo: categoryId);
+      query = query.where('categoryId', isEqualTo: categoryId);
     }
     if (trademarkId != null) {
-      parentQuery = parentQuery.where('trademark_ref', isEqualTo: trademarkId);
+      query = query.where('trademarkId', isEqualTo: trademarkId);
     }
 
-    final parentSnapshot = await parentQuery.get();
-    print(
-      '📄 [ProductRepo] Bước 1: Tìm thấy ${parentSnapshot.docs.length} sản phẩm cha phù hợp.',
-    );
-
-    if (parentSnapshot.docs.isEmpty) {
-      return []; // Không có sản phẩm cha nào khớp, trả về danh sách rỗng.
+    // Áp dụng con trỏ phân trang
+    if (lastDoc != null) {
+      query = query.startAfterDocument(lastDoc);
     }
 
-    // Bước 2: Lấy danh sách các DocumentReference của sản phẩm cha.
-    final parentRefs = parentSnapshot.docs.map((doc) => doc.reference).toList();
+    // Giới hạn số lượng kết quả
+    final snapshot = await query.limit(limit).get();
 
-    // Bước 3: Truy vấn collection `products` bằng `whereIn`.
-    // Xử lý giới hạn 30 mục của `whereIn` bằng cách chia thành các lô.
-    print('📦 [ProductRepo] Bước 2: Chuẩn bị truy vấn sản phẩm con...');
-    final List<Product> allProducts = [];
-    const chunkSize =
-        30; // Firestore 'in' and 'array-contains-any' queries are limited to 30 items.
+    final products = snapshot.docs.map((doc) => Product.fromFirestore(doc as DocumentSnapshot<Map<String, dynamic>>)).toList();
+    final bool hasMore = products.length == limit;
+    final DocumentSnapshot? newLastDoc = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
 
-    // Chia danh sách parentRefs thành các lô nhỏ hơn.
-    final List<List<DocumentReference>> chunks = [];
-    for (var i = 0; i < parentRefs.length; i += chunkSize) {
-      chunks.add(
-        parentRefs.sublist(
-          i,
-          i + chunkSize > parentRefs.length ? parentRefs.length : i + chunkSize,
-        ),
-      );
-    }
-
-    // Thực hiện các truy vấn song song cho từng lô.
-    final futures = chunks.map(
-      (chunk) => _firestore
-          .collection('products')
-          .where('parent_product_ref', whereIn: chunk)
-          .get(),
-    );
-
-    final snapshots = await Future.wait(futures);
-
-    // Gộp kết quả từ tất cả các truy vấn.
-    for (final snapshot in snapshots) {
-      allProducts.addAll(
-        snapshot.docs.map((doc) => Product.fromFirestore(doc)).toList(),
-      );
-    }
-
-    print(
-      '✅ [ProductRepo] Bước 3: Hoàn tất. Tổng số sản phẩm lấy được: ${allProducts.length}.',
-    );
-    return allProducts;
+    return ProductPage(products: products, hasMore: hasMore, lastDoc: newLastDoc);
+  }
+  
+  // Hàm trợ giúp để giữ lại logic cũ cho việc tìm kiếm (không phân trang)
+  Future<List<Product>> _getAllProductsForFilter(String? categoryId, String? trademarkId) async {
+     Query query = _firestore.collection('products');
+      if (categoryId != null) query = query.where('categoryId', isEqualTo: categoryId);
+      if (trademarkId != null) query = query.where('trademarkId', isEqualTo: trademarkId);
+      final snapshot = await query.get();
+      return snapshot.docs.map((doc) => Product.fromFirestore(doc as DocumentSnapshot<Map<String, dynamic>>)).toList();
   }
 
   @override
@@ -195,6 +190,16 @@ class FirebaseProductRepository implements IProductRepository {
     skus.sort((a, b) => (a.unitValue ?? 0).compareTo(b.unitValue ?? 0));
     print('✅ [ProductRepo] Tìm thấy ${skus.length} SKU.');
     return skus;
+  }
+
+  @override
+  Future<ParentProduct> getParentProductById(String id) async {
+    final doc = await _firestore.collection('parent_products').doc(id).get();
+    if (!doc.exists) {
+      throw Exception('Không tìm thấy sản phẩm cha với ID: $id');
+    }
+    return ParentProduct.fromFirestore(
+        doc as DocumentSnapshot<Map<String, dynamic>>);
   }
 }
 

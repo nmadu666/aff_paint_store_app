@@ -51,6 +51,16 @@ class ParentProduct extends Equatable {
     );
   }
 
+  factory ParentProduct.fromJson(Map<String, dynamic> json) {
+    return ParentProduct(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      category: json['category'] as String,
+      trademarkRef: json['trademark_ref'] as String,
+      colorMixingProductType: json['color_mixing_product_type'] as String,
+    );
+  }
+
   Map<String, dynamic> toFirestore() {
     return {
       'name': name,
@@ -60,12 +70,22 @@ class ParentProduct extends Equatable {
     };
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'category': category,
+      'trademark_ref': trademarkRef,
+      'color_mixing_product_type': colorMixingProductType,
+    };
+  }
+
   @override
   List<Object?> get props => [
-        id,
-        name,
-        category,
-        trademarkRef,
-        colorMixingProductType,
-      ];
+    id,
+    name,
+    category,
+    trademarkRef,
+    colorMixingProductType,
+  ];
 }

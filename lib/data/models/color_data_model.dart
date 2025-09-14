@@ -48,6 +48,20 @@ class ColorData extends Equatable {
     );
   }
 
+  factory ColorData.fromJson(Map<String, dynamic> json) {
+    return ColorData(
+      id: json['id'] as String,
+      code: json['code'] as String,
+      name: json['name'] as String,
+      ncs: json['ncs'] as String,
+      hexCode: json['hexCode'] as String,
+      trademarkRef: json['trademark_ref'] as String,
+      collectionRefs: List<String>.from(json['collection_refs']),
+      tone: json['tone'] as String?,
+      lightness: json['lightness'] as int?,
+    );
+  }
+
   Map<String, dynamic> toFirestore() {
     return {
       'code': code,
@@ -61,16 +75,30 @@ class ColorData extends Equatable {
     };
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'code': code,
+      'name': name,
+      'ncs': ncs,
+      'hexCode': hexCode,
+      'trademark_ref': trademarkRef,
+      'collection_refs': collectionRefs,
+      'tone': tone,
+      'lightness': lightness,
+    };
+  }
+
   @override
   List<Object?> get props => [
-        id,
-        code,
-        name,
-        ncs,
-        hexCode,
-        trademarkRef,
-        collectionRefs,
-        tone,
-        lightness
-      ];
+    id,
+    code,
+    name,
+    ncs,
+    hexCode,
+    trademarkRef,
+    collectionRefs,
+    tone,
+    lightness,
+  ];
 }
