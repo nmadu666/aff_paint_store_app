@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../cart/presentation/cart_page.dart';
 import '../../cart/presentation/widgets/cart_icon_widget.dart';
 import '../../account/presentation/account_page.dart';
-import '../../colors/presentation/color_collection_list_page.dart';
+import '../../customers/presentation/customer_list_page.dart';
 import '../../products/presentation/product_list_page.dart';
 
 /// Provider để quản lý chỉ mục (index) của trang đang được chọn.
@@ -14,8 +14,9 @@ final selectedIndexProvider = StateProvider<int>((ref) => 0);
 class AppTabs {
   static const int colors = 0;
   static const int products = 1;
-  static const int cart = 2;
-  static const int account = 3;
+  static const int customers = 2;
+  static const int cart = 3;
+  static const int account = 4;
 }
 
 /// Lớp dữ liệu cho một đích đến trong thanh điều hướng.
@@ -38,14 +39,20 @@ const _destinations = [
   _NavigationDestination(
     label: 'Màu sắc',
     icon: Icons.color_lens_outlined,
-    selectedIcon: Icons.color_lens,
-    body: ColorCollectionListPage(),
+    selectedIcon: Icons.color_lens, // Giả định bạn sẽ có trang này
+    body: Center(child: Text('Trang màu sắc')), // Placeholder
   ),
   _NavigationDestination(
     label: 'Sản phẩm',
     icon: Icons.category_outlined,
     selectedIcon: Icons.category,
     body: ProductListPage(),
+  ),
+  _NavigationDestination(
+    label: 'Khách hàng',
+    icon: Icons.people_outline,
+    selectedIcon: Icons.people,
+    body: CustomerListPage(),
   ),
   _NavigationDestination(
     label: 'Giỏ hàng',

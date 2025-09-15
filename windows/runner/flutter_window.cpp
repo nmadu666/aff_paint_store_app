@@ -50,9 +50,14 @@ void FlutterWindow::OnDestroy() {
 LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
-                              LPARAM const lparam) noexcept {
+                              LPARAM const lparam) noexcept {  
   // Give Flutter, including plugins, an opportunity to handle window messages.
-  if (flutter_controller_) {
+  //
+  // We're filtering `WM_SETFOCUS` and `WM_KILLFOCUS` here because Flutter
+  // framework considers window visible only after the first frame is rendered,
+  // and receiving these messages before then would cause unwanted warnings.
+  if (flutter_controller_ &&
+      (message != WM_SETFOCUS && message != WM_KILLFOCUS)) {
     std::optional<LRESULT> result =
         flutter_controller_->HandleTopLevelWindowProc(hwnd, message, wparam,
                                                       lparam);
