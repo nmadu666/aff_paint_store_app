@@ -18,6 +18,9 @@ abstract class ICustomerRepository {
 
   /// Cập nhật thông tin một khách hàng.
   Future<void> updateCustomer(Customer customer);
+
+  /// Xóa một khách hàng.
+  Future<void> deleteCustomer(String customerId);
 }
 
 /// Implementation của ICustomerRepository sử dụng Firebase Firestore.
@@ -87,5 +90,10 @@ class FirebaseCustomerRepository implements ICustomerRepository {
   @override
   Future<void> updateCustomer(Customer customer) {
     return _collection.doc(customer.id).update(customer.toJson());
+  }
+
+  @override
+  Future<void> deleteCustomer(String customerId) {
+    return _collection.doc(customerId).delete();
   }
 }

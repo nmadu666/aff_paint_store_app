@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/customer_model.dart';
 import '../../../data/repositories/customer_repository.dart';
-import 'customer_providers.dart';
 
 const _customersPerPage = 20;
 
@@ -75,10 +74,15 @@ class PaginatedCustomersNotifier
 
   /// Tải trang dữ liệu tiếp theo.
   Future<void> fetchNextPage(CustomerFilter filter) async {
-    if (_isFetching || !state.value!.hasMore) return;
+    // Chỉ thực hiện khi state là AsyncData và không đang fetch.
+    // Điều này giúp tránh lỗi "null check on a null value" nếu fetchNextPage
+    // được gọi khi state đang loading hoặc error.
+    final value = state.valueOrNull;
+    if (_isFetching || value == null || !value.hasMore) return;
+
     _isFetching = true;
 
-    final currentState = state.value!;
+    final currentState = value;
     try {
       final nextPage = await _repository.getCustomers(
         searchTerm: filter.searchTerm,
