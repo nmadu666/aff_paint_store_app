@@ -3,10 +3,10 @@ import 'package:aff_paint_store_app/features/cart/application/cart_sync_provider
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:aff_paint_store_app/features/auth/presentation/auth_wrapper.dart';
 
 import 'features/auth/application/auth_providers.dart';
 import 'data/services/cart_storage_service.dart';
-import 'features/shell/presentation/app_scaffold.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
@@ -56,8 +56,8 @@ class MyApp extends ConsumerWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      // Đặt trang danh sách bộ sưu tập màu làm trang chủ để demo
-      home: const AppScaffold(),
+      // AuthWrapper sẽ quyết định hiển thị AuthPage hay AppScaffold
+      home: const AuthWrapper(),
     );
   }
 }

@@ -7,8 +7,6 @@ import cors from "cors";
 // Khởi tạo CORS middleware
 const corsHandler = cors({origin: true});
 
-// Khởi tạo Firebase Admin SDK
-admin.initializeApp();
 const db = admin.firestore();
 
 // Biến toàn cục để cache access token

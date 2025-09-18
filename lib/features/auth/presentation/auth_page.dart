@@ -1,11 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/auth_providers.dart';
-
-/// Enum để xác định chế độ của trang: Đăng nhập hoặc Đăng ký.
-enum AuthMode { login, register }
 
 /// Trang để người dùng đăng nhập hoặc đăng ký tài khoản.
 class AuthPage extends ConsumerStatefulWidget {
@@ -17,30 +15,50 @@ class AuthPage extends ConsumerStatefulWidget {
 
 class _AuthPageState extends ConsumerState<AuthPage> {
   final _formKey = GlobalKey<FormState>();
-  var _authMode = AuthMode.login;
-  var _isLoading = false;
-  String _email = '';
-  String _password = '';
+  bool _isLoading = false;
+  late final TextEditingController _emailController;
+  late final TextEditingController _passwordController;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController();
+    _passwordController = TextEditingController();
+
+    // Tự động điền thông tin đăng nhập khi ở chế độ debug
+    if (kDebugMode) {
+      _emailController.text = 'admin@ppsgs.com';
+      _passwordController.text = 'duylatao';
+    }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   /// Hàm xử lý logic khi người dùng nhấn nút submit.
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) {
       return; // Nếu form không hợp lệ, không làm gì cả.
     }
-    _formKey.currentState!.save();
 
     setState(() => _isLoading = true);
 
     try {
       final authRepository = ref.read(authRepositoryProvider);
-      if (_authMode == AuthMode.login) {
-        await authRepository.signInWithEmailAndPassword(_email, _password);
-      } else {
-        await authRepository.createUserWithEmailAndPassword(_email, _password);
+      await authRepository.signInWithEmailAndPassword(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+
+      // Nếu đăng nhập thành công và trang này được push lên từ một trang khác,
+      // nó sẽ tự động được pop. Nếu không, AuthWrapper sẽ xử lý việc điều hướng.
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
       }
-      // Nếu thành công, tự động quay lại trang trước.
-      // authStateChangesProvider sẽ cập nhật UI của AccountPage.
-      if (mounted) Navigator.of(context).pop();
     } on FirebaseAuthException catch (error) {
       // Hiển thị lỗi từ Firebase một cách thân thiện.
       if (mounted) {
@@ -56,19 +74,10 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     }
   }
 
-  /// Chuyển đổi giữa chế độ Đăng nhập và Đăng ký.
-  void _switchAuthMode() {
-    setState(() {
-      _authMode = _authMode == AuthMode.login ? AuthMode.register : AuthMode.login;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_authMode == AuthMode.login ? 'Đăng nhập' : 'Đăng ký'),
-      ),
+      appBar: AppBar(title: const Text('Đăng nhập')),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -78,6 +87,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 TextFormField(
+                  controller: _emailController,
                   key: const ValueKey('email'),
                   validator: (value) {
                     if (value == null || !value.contains('@')) {
@@ -85,11 +95,11 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                     }
                     return null;
                   },
-                  onSaved: (value) => _email = value!,
                   keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(labelText: 'Email'),
                 ),
                 TextFormField(
+                  controller: _passwordController,
                   key: const ValueKey('password'),
                   validator: (value) {
                     if (value == null || value.length < 6) {
@@ -97,7 +107,6 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                     }
                     return null;
                   },
-                  onSaved: (value) => _password = value!,
                   obscureText: true,
                   decoration: const InputDecoration(labelText: 'Mật khẩu'),
                 ),
@@ -108,18 +117,13 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                   ElevatedButton(
                     onPressed: _submit,
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 50,
+                        vertical: 12,
+                      ),
                     ),
-                    child: Text(_authMode == AuthMode.login ? 'ĐĂNG NHẬP' : 'ĐĂNG KÝ'),
+                    child: const Text('ĐĂNG NHẬP'),
                   ),
-                TextButton(
-                  onPressed: _switchAuthMode,
-                  child: Text(
-                    _authMode == AuthMode.login
-                        ? 'Tạo tài khoản mới'
-                        : 'Tôi đã có tài khoản',
-                  ),
-                ),
               ],
             ),
           ),
@@ -128,4 +132,3 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     );
   }
 }
-

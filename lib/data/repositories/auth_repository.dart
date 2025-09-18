@@ -12,7 +12,10 @@ abstract class IAuthRepository {
   Future<void> signInWithEmailAndPassword(String email, String password);
 
   /// Tạo tài khoản mới bằng email và mật khẩu.
-  Future<void> createUserWithEmailAndPassword(String email, String password);
+  Future<UserCredential> createUserWithEmailAndPassword(
+    String email,
+    String password,
+  );
 
   /// Đăng xuất.
   Future<void> signOut();
@@ -32,12 +35,21 @@ class FirebaseAuthRepository implements IAuthRepository {
 
   @override
   Future<void> signInWithEmailAndPassword(String email, String password) async {
-    await _firebaseAuth.signInWithEmailAndPassword(email: email, password: password);
+    await _firebaseAuth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
   }
 
   @override
-  Future<void> createUserWithEmailAndPassword(String email, String password) async {
-    await _firebaseAuth.createUserWithEmailAndPassword(email: email, password: password);
+  Future<UserCredential> createUserWithEmailAndPassword(
+    String email,
+    String password,
+  ) async {
+    return await _firebaseAuth.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
   }
 
   @override
@@ -45,4 +57,3 @@ class FirebaseAuthRepository implements IAuthRepository {
     await _firebaseAuth.signOut();
   }
 }
-
