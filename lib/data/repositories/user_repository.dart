@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/app_user_model.dart';
+import '../sources/local/user_local_data_source.dart';
 
 /// Lớp trừu tượng định nghĩa phương thức lấy thông tin người dùng.
 abstract class IUserRepository {
@@ -33,14 +34,20 @@ abstract class IUserRepository {
 /// Triển khai repository sử dụng Firebase Firestore.
 class FirebaseUserRepository implements IUserRepository {
   final FirebaseFirestore _firestore;
+  final UserLocalDataSource _localDataSource;
 
-  FirebaseUserRepository(this._firestore);
+  FirebaseUserRepository(this._firestore, this._localDataSource);
 
   @override
   Future<AppUser?> getUser(String uid) async {
     final doc = await _firestore.collection('users').doc(uid).get();
     if (doc.exists) {
-      return AppUser.fromFirestore(doc);
+      final appUser = AppUser.fromFirestore(doc);
+      await _localDataSource.saveUserData(
+        kiotVietUserId: appUser.kiotVietUserRef?.id,
+        branchId: appUser.branchRef?.id,
+      );
+      return appUser;
     }
     return null;
   }

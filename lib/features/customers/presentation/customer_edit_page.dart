@@ -94,7 +94,12 @@ class _CustomerEditPageState extends ConsumerState<CustomerEditPage> {
             createdDate: DateTime.now(),
             modifiedDate: DateTime.now(),
           );
-          await ref.read(customerRepositoryProvider).addCustomer(newCustomer);
+          final createdCustomer = await ref.read(customerRepositoryProvider).addCustomer(newCustomer);
+          if (mounted) {
+            // Pop với khách hàng vừa tạo
+            Navigator.of(context).pop(createdCustomer);
+          }
+          return; // Dừng hàm ở đây để không chạy logic pop bên dưới
         }
 
         if (mounted) {
@@ -105,8 +110,8 @@ class _CustomerEditPageState extends ConsumerState<CustomerEditPage> {
               ),
             ),
           );
-          // Pop với kết quả `true` để báo hiệu cho trang trước cần làm mới.
-          Navigator.of(context).pop(true);
+          // Pop với kết quả `true` để báo hiệu cho trang chi tiết cần làm mới.
+          Navigator.of(context).pop(true); 
         }
       } catch (e) {
         if (mounted) {

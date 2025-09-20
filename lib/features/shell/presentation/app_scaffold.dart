@@ -4,22 +4,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../cart/presentation/cart_page.dart';
 import '../../cart/presentation/widgets/cart_icon_widget.dart';
 import '../../account/presentation/account_page.dart';
+import '../../colors/presentation/color_collection_list_page.dart';
 import '../../customers/presentation/customer_list_page.dart';
+import '../../orders/presentation/orders_list_screen.dart';
 import '../../products/presentation/product_list_page.dart';
 
-/// Provider để quản lý chỉ mục (index) của trang đang được chọn.
+/// Provider to manage the selected page index.
 final selectedIndexProvider = StateProvider<int>((ref) => 0);
 
-/// Hằng số cho các chỉ mục của tab để tránh hard-coding.
+/// Constants for tab indices to avoid hard-coding.
 class AppTabs {
   static const int colors = 0;
   static const int products = 1;
   static const int customers = 2;
-  static const int cart = 3;
-  static const int account = 4;
+  static const int orders = 3; // Add new tab for orders
+  static const int cart = 4;
+  static const int account = 5;
 }
 
-/// Lớp dữ liệu cho một đích đến trong thanh điều hướng.
+/// Data class for a destination in the navigation bar.
 class _NavigationDestination {
   const _NavigationDestination({
     required this.label,
@@ -34,13 +37,13 @@ class _NavigationDestination {
   final Widget body;
 }
 
-/// Danh sách các trang chính của ứng dụng.
-const _destinations = [
+/// List of the main pages of the app.
+final _destinations = [
   _NavigationDestination(
     label: 'Màu sắc',
     icon: Icons.color_lens_outlined,
-    selectedIcon: Icons.color_lens, // Giả định bạn sẽ có trang này
-    body: Center(child: Text('Trang màu sắc')), // Placeholder
+    selectedIcon: Icons.color_lens,
+    body: const ColorCollectionListPage(),
   ),
   _NavigationDestination(
     label: 'Sản phẩm',
@@ -53,6 +56,12 @@ const _destinations = [
     icon: Icons.people_outline,
     selectedIcon: Icons.people,
     body: CustomerListPage(),
+  ),
+  _NavigationDestination( // Add the new destination for Orders
+    label: 'Đơn hàng',
+    icon: Icons.receipt_long_outlined,
+    selectedIcon: Icons.receipt_long,
+    body: const OrdersListScreen(),
   ),
   _NavigationDestination(
     label: 'Giỏ hàng',
@@ -68,8 +77,8 @@ const _destinations = [
   ),
 ];
 
-/// Widget khung sườn chính của ứng dụng, chứa thanh điều hướng
-/// và có khả năng thích ứng với các kích thước màn hình khác nhau.
+/// Main scaffold widget of the app, containing the navigation bar
+/// and adaptable to different screen sizes.
 class AppScaffold extends ConsumerWidget {
   const AppScaffold({super.key});
 
@@ -77,21 +86,21 @@ class AppScaffold extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedIndex = ref.watch(selectedIndexProvider);
 
-    // Tạo danh sách các widget body một lần để cung cấp cho IndexedStack.
+    // Create the list of body widgets once to provide to IndexedStack.
     final pageBodies = _destinations.map((d) => d.body).toList();
 
-    // Sử dụng LayoutBuilder để quyết định hiển thị NavigationRail hay NavigationBar.
+    // Use LayoutBuilder to decide whether to show NavigationRail or NavigationBar.
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Màn hình rộng (desktop/tablet ngang)
+        // Wide screen (desktop/landscape tablet)
         if (constraints.maxWidth >= 640) {
           return Scaffold(
             appBar: AppBar(
-              // Lấy tiêu đề từ destination tương ứng với index đang chọn.
+              // Get the title from the destination corresponding to the selected index.
               title: Text(_destinations[selectedIndex].label),
               backgroundColor: Theme.of(context).colorScheme.inversePrimary,
               actions: const [
-                // CartIconWidget vẫn nằm ở đây để truy cập nhanh
+                // CartIconWidget is still here for quick access
                 CartIconWidget(),
               ],
             ),
@@ -111,29 +120,29 @@ class AppScaffold extends ConsumerWidget {
                   }).toList(),
                 ),
                 const VerticalDivider(thickness: 1, width: 1),
-                // Sử dụng IndexedStack để giữ trạng thái của các trang.
+                // Use IndexedStack to preserve the state of the pages.
                 Expanded(
-                  // Thay thế IndexedStack bằng AnimatedSwitcher để có hiệu ứng.
-                  // Key của child (pageBodies[selectedIndex]) là khác nhau cho mỗi tab,
-                  // điều này kích hoạt animation.
+                  // Replace IndexedStack with AnimatedSwitcher for an effect.
+                  // The key of the child (pageBodies[selectedIndex]) is different for each tab,
+                  // which triggers the animation.
                   child: AnimatedSwitcher(
                     duration: const Duration(
                       milliseconds: 250,
-                    ), // Thời gian chuyển đổi
+                    ), // Transition duration
                     transitionBuilder: (Widget child, Animation<double> animation) {
-                      // Xác định hướng trượt dựa trên index của child.
-                      // Chúng ta cần key để xác định child nào là child mới.
+                      // Determine the slide direction based on the child's index.
+                      // We need the key to identify which child is the new one.
                       final newIndex = _destinations.indexWhere(
                         (d) => d.body.key == child.key,
                       );
                       final oldIndex = selectedIndex;
 
-                      // Nếu không tìm thấy (trường hợp hiếm), dùng hiệu ứng fade mặc định.
+                      // If not found (rare case), use the default fade effect.
                       if (newIndex == -1) {
                         return FadeTransition(opacity: animation, child: child);
                       }
 
-                      // +1.0: trượt từ phải sang, -1.0: trượt từ trái sang.
+                      // +1.0: slide from right to left, -1.0: slide from left to right.
                       final offset = (newIndex > oldIndex) ? 1.0 : -1.0;
 
                       final slideAnimation = Tween<Offset>(
@@ -145,7 +154,7 @@ class AppScaffold extends ConsumerWidget {
                         child: child,
                       );
                     },
-                    // Widget con sẽ thay đổi dựa trên selectedIndex
+                    // The child widget will change based on selectedIndex
                     child: pageBodies[selectedIndex],
                   ),
                 ),
@@ -154,16 +163,16 @@ class AppScaffold extends ConsumerWidget {
           );
         }
 
-        // Màn hình hẹp (mobile)
+        // Narrow screen (mobile)
         return Scaffold(
           appBar: AppBar(
             title: Text(_destinations[selectedIndex].label),
             backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-            // Trên mobile, icon giỏ hàng đã có ở thanh điều hướng dưới
-            // nên có thể ẩn đi ở AppBar để tránh lặp lại.
+            // On mobile, the cart icon is already in the bottom navigation bar
+            // so it can be hidden from the AppBar to avoid repetition.
             // actions: const [ CartIconWidget() ],
           ),
-          // Sử dụng IndexedStack để giữ trạng thái của các trang.
+          // Use IndexedStack to preserve the state of the pages.
           body: AnimatedSwitcher(
             duration: const Duration(milliseconds: 250),
             transitionBuilder: (Widget child, Animation<double> animation) {
@@ -184,7 +193,7 @@ class AppScaffold extends ConsumerWidget {
               ).animate(animation);
               return SlideTransition(position: slideAnimation, child: child);
             },
-            // Key của child rất quan trọng để AnimatedSwitcher biết widget nào là mới/cũ.
+            // The key of the child is very important for AnimatedSwitcher to know which widget is new/old.
             child: pageBodies[selectedIndex],
           ),
           bottomNavigationBar: NavigationBar(
@@ -205,9 +214,9 @@ class AppScaffold extends ConsumerWidget {
   }
 }
 
-/// Để hoàn tất, bạn cần cập nhật file `main.dart`
-/// để sử dụng `AppScaffold` làm widget `home` của `MaterialApp`.
+/// To complete, you need to update the `main.dart` file
+/// to use `AppScaffold` as the `home` widget of `MaterialApp`.
 ///
-/// Ví dụ trong `main.dart`:
+/// Example in `main.dart`:
 ///
 /// home: const AppScaffold(),

@@ -51,6 +51,7 @@ class MyApp extends ConsumerWidget {
     ref.watch(cartSyncProvider);
 
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'AFF Paint Store',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),

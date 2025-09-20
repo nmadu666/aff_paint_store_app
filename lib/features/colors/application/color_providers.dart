@@ -50,3 +50,8 @@ final availableBasesProvider =
   );
 });
 // Có thể thêm các provider khác liên quan đến màu sắc ở đây trong tương lai.
+
+final allColorsProvider = FutureProvider.autoDispose<List<ColorData>>((ref) {
+  final repository = ref.watch(colorRepositoryProvider);
+  return repository.getAllColors();
+});

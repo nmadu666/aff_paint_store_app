@@ -5,13 +5,14 @@ import '../../../data/models/branch_model.dart';
 import '../../../data/models/app_user_model.dart';
 import '../../../data/models/kiotviet_user_model.dart';
 import '../../../data/repositories/user_repository.dart';
+import '../../../data/sources/local/user_local_data_source.dart';
 import 'auth_providers.dart';
 import '../../../data/repositories/kiotviet_user_repository.dart';
 import '../../../data/repositories/branch_repository.dart';
 
 /// Provider cho IUserRepository.
 final userRepositoryProvider = Provider<IUserRepository>((ref) {
-  return FirebaseUserRepository(FirebaseFirestore.instance);
+  return FirebaseUserRepository(FirebaseFirestore.instance, UserLocalDataSource());
 });
 
 /// Provider này theo dõi trạng thái đăng nhập từ Firebase Auth (`authStateChangesProvider`)

@@ -1,9 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/color_collection_model.dart';
 import '../models/color_pricing_model.dart';
 import '../models/color_data_model.dart';
 
 /// Lớp trừu tượng định nghĩa các phương thức cần có để lấy dữ liệu màu sắc.
 abstract class IColorRepository {
+  Future<List<ColorCollection>> getColorCollections({String? trademarkId});
+
   Future<ColorPricing?> getColorPricing({
     required String colorId,
     required String colorMixingProductType,
@@ -18,11 +21,26 @@ abstract class IColorRepository {
     required String colorId,
     required String colorMixingProductType,
   });
+
+  /// Lấy tất cả các màu.
+  Future<List<ColorData>> getAllColors();
 }
 
 /// Triển khai repository sử dụng Firebase Firestore.
 class FirebaseColorRepository implements IColorRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  @override
+  Future<List<ColorCollection>> getColorCollections({String? trademarkId}) async {
+    Query query = _firestore.collection('color_collections');
+    if (trademarkId != null) {
+      query = query.where('trademark_ref', isEqualTo: trademarkId);
+    }
+    final snapshot = await query.get();
+    return snapshot.docs
+        .map((doc) => ColorCollection.fromFirestore(doc as DocumentSnapshot<Map<String, dynamic>>))
+        .toList();
+  }
 
   @override
   Future<ColorPricing?> getColorPricing({
@@ -111,5 +129,14 @@ class FirebaseColorRepository implements IColorRepository {
 
     print('✅ [ColorRepo] Các gốc sơn tìm thấy: $bases');
     return bases;
+  }
+
+  @override
+  Future<List<ColorData>> getAllColors() async {
+    final snapshot = await _firestore.collection('colors').get();
+    return snapshot.docs
+        .map((doc) =>
+            ColorData.fromFirestore(doc as DocumentSnapshot<Map<String, dynamic>>))
+        .toList();
   }
 }

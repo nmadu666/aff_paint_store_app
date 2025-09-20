@@ -17,10 +17,14 @@ class CompatibleParentProductList extends ConsumerWidget {
   /// Callback được gọi khi người dùng chọn một `ParentProduct` từ danh sách.
   final ValueChanged<ParentProduct> onParentProductSelected;
 
+  /// Controller để cuộn danh sách bên trong DraggableScrollableSheet.
+  final ScrollController? scrollController;
+
   const CompatibleParentProductList({
     super.key,
     required this.color,
     required this.onParentProductSelected,
+    this.scrollController,
   });
 
   @override
@@ -48,6 +52,7 @@ class CompatibleParentProductList extends ConsumerWidget {
         // Hiển thị danh sách sản phẩm nếu có dữ liệu.
         return ListView.builder(
           shrinkWrap: true, // Để ListView chỉ chiếm không gian cần thiết.
+          controller: scrollController,
           itemCount: products.length,
           itemBuilder: (context, index) {
             final product = products[index];

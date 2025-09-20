@@ -14,7 +14,7 @@ abstract class ICustomerRepository {
   Future<Customer> getCustomerById(String id);
 
   /// Thêm một khách hàng mới.
-  Future<void> addCustomer(Customer customer);
+  Future<Customer> addCustomer(Customer customer);
 
   /// Cập nhật thông tin một khách hàng.
   Future<void> updateCustomer(Customer customer);
@@ -83,8 +83,10 @@ class FirebaseCustomerRepository implements ICustomerRepository {
   }
 
   @override
-  Future<void> addCustomer(Customer customer) {
-    return _collection.add(customer.toJson());
+  Future<Customer> addCustomer(Customer customer) async {
+    final docRef = await _collection.add(customer.toJson());
+    final snapshot = await docRef.get();
+    return Customer.fromFirestore(snapshot);
   }
 
   @override
